@@ -5,6 +5,7 @@ on:
       - 'releases/*'
       - 'rc/*'
       - 'beta/*'
+  workflow_dispatch:
 
 jobs:
   release:
