@@ -5641,10 +5641,10 @@ const { resolve } = __nccwpck_require__(6928)
 
 async function createWriterOpts () {
   const [template, header, commit, footer] = await Promise.all([
-    readFile(__nccwpck_require__.ab + "template2.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "header2.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "commit2.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "footer1.hbs", 'utf-8')
+    readFile(__nccwpck_require__.ab + "template.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "header.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "commit.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "footer.hbs", 'utf-8')
   ])
   const writerOpts = getWriterOpts()
 
@@ -5985,10 +5985,10 @@ async function createWriterOpts (config) {
     commit,
     footer
   ] = await Promise.all([
-    readFile(__nccwpck_require__.ab + "template.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "header.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "commit.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "footer.hbs", 'utf-8')
+    readFile(__nccwpck_require__.ab + "template1.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "header1.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "commit1.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "footer1.hbs", 'utf-8')
   ])
   const writerOpts = getWriterOpts(finalConfig)
 
@@ -6803,9 +6803,9 @@ const { resolve } = __nccwpck_require__(6928)
 
 async function createWriterOpts () {
   const [template, header, commit] = await Promise.all([
-    readFile(__nccwpck_require__.ab + "template1.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "header1.hbs", 'utf-8'),
-    readFile(__nccwpck_require__.ab + "commit1.hbs", 'utf-8')
+    readFile(__nccwpck_require__.ab + "template2.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "header2.hbs", 'utf-8'),
+    readFile(__nccwpck_require__.ab + "commit2.hbs", 'utf-8')
   ])
   const writerOpts = getWriterOpts()
 
@@ -16103,7 +16103,7 @@ const testSet = (set, version, options) => {
 
 const debug = __nccwpck_require__(1159)
 const { MAX_LENGTH, MAX_SAFE_INTEGER } = __nccwpck_require__(5101)
-const { safeRe: re, t } = __nccwpck_require__(5471)
+const { safeRe: re, safeSrc: src, t } = __nccwpck_require__(5471)
 
 const parseOptions = __nccwpck_require__(356)
 const { compareIdentifiers } = __nccwpck_require__(3348)
@@ -16113,7 +16113,7 @@ class SemVer {
 
     if (version instanceof SemVer) {
       if (version.loose === !!options.loose &&
-          version.includePrerelease === !!options.includePrerelease) {
+        version.includePrerelease === !!options.includePrerelease) {
         return version
       } else {
         version = version.version
@@ -16279,6 +16279,20 @@ class SemVer {
   // preminor will bump the version up to the next minor release, and immediately
   // down to pre-release. premajor and prepatch work the same way.
   inc (release, identifier, identifierBase) {
+    if (release.startsWith('pre')) {
+      if (!identifier && identifierBase === false) {
+        throw new Error('invalid increment argument: identifier is empty')
+      }
+      // Avoid an invalid semver results
+      if (identifier) {
+        const r = new RegExp(`^${this.options.loose ? src[t.PRERELEASELOOSE] : src[t.PRERELEASE]}$`)
+        const match = `-${identifier}`.match(r)
+        if (!match || match[1] !== identifier) {
+          throw new Error(`invalid identifier: ${identifier}`)
+        }
+      }
+    }
+
     switch (release) {
       case 'premajor':
         this.prerelease.length = 0
@@ -16308,6 +16322,12 @@ class SemVer {
           this.inc('patch', identifier, identifierBase)
         }
         this.inc('pre', identifier, identifierBase)
+        break
+      case 'release':
+        if (this.prerelease.length === 0) {
+          throw new Error(`version ${this.raw} is not a prerelease`)
+        }
+        this.prerelease.length = 0
         break
 
       case 'major':
@@ -16351,10 +16371,6 @@ class SemVer {
       // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
       case 'pre': {
         const base = Number(identifierBase) ? 1 : 0
-
-        if (!identifier && identifierBase === false) {
-          throw new Error('invalid increment argument: identifier is empty')
-        }
 
         if (this.prerelease.length === 0) {
           this.prerelease = [base]
@@ -16614,20 +16630,13 @@ const diff = (version1, version2) => {
       return 'major'
     }
 
-    // Otherwise it can be determined by checking the high version
-
-    if (highVersion.patch) {
-      // anything higher than a patch bump would result in the wrong version
+    // If the main part has no difference
+    if (lowVersion.compareMain(highVersion) === 0) {
+      if (lowVersion.minor && !lowVersion.patch) {
+        return 'minor'
+      }
       return 'patch'
     }
-
-    if (highVersion.minor) {
-      // anything higher than a minor bump would result in the wrong version
-      return 'minor'
-    }
-
-    // bumping major/minor/patch all have same result
-    return 'major'
   }
 
   // add the `pre` prefix if we are going to a prerelease version
@@ -17134,6 +17143,7 @@ exports = module.exports = {}
 const re = exports.re = []
 const safeRe = exports.safeRe = []
 const src = exports.src = []
+const safeSrc = exports.safeSrc = []
 const t = exports.t = {}
 let R = 0
 
@@ -17166,6 +17176,7 @@ const createToken = (name, value, isGlobal) => {
   debug(name, index, value)
   t[name] = index
   src[index] = value
+  safeSrc[index] = safe
   re[index] = new RegExp(value, isGlobal ? 'g' : undefined)
   safeRe[index] = new RegExp(safe, isGlobal ? 'g' : undefined)
 }
@@ -22348,8 +22359,81 @@ module.exports = function(argument) {
 
 const core = __nccwpck_require__(7484)
 const semver = __nccwpck_require__(2088)
+const { exec } = __nccwpck_require__(5317);
 
 const requireScript = __nccwpck_require__(8247)
+
+// get current git branch
+const getCurrentBranch = () => {
+  return new Promise((resolve, reject) => {
+    exec('git rev-parse --abbrev-ref HEAD', (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        reject(new Error(stderr));
+        return;
+      }
+      resolve(stdout.trim());
+    });
+  });
+};
+
+const getPrereleaseFlag = async () => {
+  // boolean
+  let prerelease = core.getBooleanInput('pre-release')
+  let identifier = core.getInput('pre-release-identifier')
+  try {
+    const currentBranch = await getCurrentBranch();
+    const rcMatch = currentBranch.match(/^rc\//);
+    const betaMatch = currentBranch.match(/^beta\//);
+    
+    core.info(`currentBranch - ${currentBranch}`);
+    core.info(`rcMatch - ${rcMatch}`);
+    core.info(`betaMatch - ${betaMatch}`);
+    
+    if (rcMatch || betaMatch) {
+      prerelease = true;
+      identifier = rcMatch ? 'rc' : 'beta';
+    }
+  } catch (error) {
+    core.warning(`Failed to get current git branch: ${error.message}`);
+  }
+  
+  return [prerelease, identifier]
+}
+
+const getNextVersion = async (currentVersion, config) => {
+  const {
+    prerelease, identifier, releaseType
+  } = config;
+  
+  const isUnStableVersion = currentVersion.includes('rc') || currentVersion.includes('beta');
+  // working on prerelease version
+  const isPrereleasing = prerelease && isUnStableVersion;
+  
+  core.info(`isPrereleasing: ${isPrereleasing}`);
+  core.info(`isUnStableVersion: ${isUnStableVersion}`);
+  core.info(`currentVersion: ${currentVersion}`);
+  
+  if (isPrereleasing) {
+    core.info(`bump the suffix version`);
+    // if last version include rc or beta, just bump the suffix version
+    // 1.2.4-beta.1 => 1.2.4-beta.2
+    return semver.inc(currentVersion, `prerelease`, identifier)
+  }
+  
+  // from prelease to stable version
+  if (!prerelease && isUnStableVersion) {
+    core.info(`bump the release version`);
+    // 1.2.4-beta.1 => 1.2.4
+    return semver.inc(currentVersion, 'release')
+  }
+  
+  core.info(`bump the ${releaseType} version`);
+  return semver.inc(currentVersion, (prerelease ? `pre${releaseType}` : releaseType), identifier)
+}
 
 /**
  * Bumps the given version with the given release type
@@ -22361,11 +22445,15 @@ const requireScript = __nccwpck_require__(8247)
 module.exports = async (releaseType, version) => {
   let newVersion
 
-  const prerelease = core.getBooleanInput('pre-release')
-  const identifier = core.getInput('pre-release-identifier')
+  const [prerelease, identifier] = await getPrereleaseFlag()
+
+  core.info(`prerelease: ${prerelease}`);
+  core.info(`prerelease: ${typeof prerelease}`);
+  core.info(`identifier: ${identifier}`);
 
   if (version) {
-    newVersion = semver.inc(version, (prerelease ? `pre${releaseType}` : releaseType), identifier)
+    newVersion = await getNextVersion(version, { prerelease, identifier, releaseType })
+    core.info(`Bumped version from "${version}" to "${newVersion}"`);
   } else {
 
     const fallbackVersion = core.getInput('fallback-version')
